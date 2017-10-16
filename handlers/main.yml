@@ -1,0 +1,18 @@
+---
+- name: configtest nginx
+  command: nginx -t
+  register: nginx_configtest_result
+
+- name: reload nginx
+  service:
+    name: nginx
+    state: reloaded
+  when: nginx_configtest_result|success
+
+- name: update permissions
+  file: path=/srv/www/{{ item }}/
+        owner={{ http_user }}
+        group={{ http_user }}
+        state=directory
+        recurse=yes
+  with_items: nginx_sites.{{ inventory_hostname }}
