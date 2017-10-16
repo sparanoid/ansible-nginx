@@ -1,0 +1,4 @@
+---
+http_user: nginx
+nginx_sites: []
+ssl_sites: [] # Used by Let's Encrypt, normal CA issued are not speicified here

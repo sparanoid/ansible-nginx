@@ -1,0 +1,239 @@
+#
+# setup nginx
+#
+
+# TODO: get external IP
+# - name: get host external IP
+#   # See http://www.commandlinefu.com/commands/view/5427/get-your-external-ip-address
+#   # for alternatives to this command
+#   command: curl --silent --fail http://ifconfig.me/ip
+#   register: host_external_ip
+#   tags:
+#     - nginx
+#     - debug
+#
+# - set_fact: external_hostname="{{ host_external_ip.stdout }}"
+#   tags:
+#     - nginx
+#     - debug
+
+- name: install nginx repo
+  yum_repository:
+    name: nginx
+    baseurl: http://nginx.org/packages/mainline/centos/{{ ansible_distribution_major_version }}/$basearch/
+    gpgcheck: no
+  tags:
+    - repo
+
+- name: install nginx
+  yum:
+    name: nginx
+    state: present
+  tags:
+    - repo
+
+- name: ensure httpd is stopped and disabled
+  service:
+    name: httpd
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+  tags:
+    - nginx
+
+- name: enable nginx
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+  notify: update permissions
+  tags:
+    - nginx
+
+# - name: disable SELinux (nginx permission fix)
+#   selinux: state=disabled
+#   tags:
+#     - nginx
+#   when: ansible_distribution == 'CentOS' and ansible_distribution_version >= '7'
+
+# - name: create strong DH group for nginx
+#   command: openssl dhparam -out /etc/nginx/ssl/dhparams.pem 2048 creates=/etc/nginx/ssl/dhparams.pem
+#   notify:
+#     - configtest nginx
+#     - reload nginx
+#   tags:
+#     - nginx
+#     - ssl
+
+- name: nginx auto reload via cron
+  cron:
+    name: nginx auto reload
+    minute: 8
+    hour: 3
+    day: 26
+    job: "nginx -s reload >/dev/null 2>&1"
+  tags:
+    - nginx
+
+- name: add nginx logrotate for custom locations
+  lineinfile: dest=/etc/logrotate.d/nginx
+              insertbefore="\/var\/log\/nginx\/\*\.log"
+              line="/srv/www/*/logs/*.log"
+  tags:
+    - nginx
+    - logrotate
+
+- name: create nginx cache directory
+  file:
+    path: /var/lib/nginx/cache/
+    state: directory
+  tags:
+    - nginx
+
+- name: create nginx deny-hosts for fail2ban
+  copy:
+    content: ""
+    dest: /etc/nginx/conf.d/deny-hosts
+    force: no
+    owner: nginx
+    group: nginx
+  # TODO: Need better solution:
+  # LINK: https://github.com/ansible/ansible/issues/7490
+  # file:
+  #   path: /etc/nginx/conf.d/deny-hosts
+  #   state: touch
+  #   owner: nginx
+  #   group: nginx
+  # changed_when: false
+  tags:
+    - nginx
+    - fail2ban
+
+- name: create site public directories
+  file:
+    path: /srv/www/{{ item }}/public_html/
+    state: directory
+  with_items: "{{ nginx_sites[inventory_hostname] | default([]) }}"
+  tags:
+    - nginx
+    - nginx_sites
+    - nginx_config
+
+- name: create site log directories
+  file:
+    path: /srv/www/{{ item }}/logs/
+    state: directory
+  with_items: "{{ nginx_sites[inventory_hostname] | default([]) }}"
+  tags:
+    - nginx
+    - nginx_sites
+
+- name: sync nginx configs
+  copy:
+    src: nginx/
+    dest: /etc/nginx/
+  notify:
+    - configtest nginx
+    - reload nginx
+  tags:
+    - nginx
+    - nginx_config
+
+- name: sync nginx site configs
+  copy:
+    src: nginx-sites/{{ inventory_hostname }}/
+    dest: /etc/nginx/sites/
+  notify:
+    - configtest nginx
+    - reload nginx
+  tags:
+    - nginx
+    - nginx_config
+    - nginx_sites
+
+# TODO: I never use Nginx stream mode (TCP load balancing), so disable for now
+# - name: sync nginx stream configs
+#   copy:
+#     src: nginx-streams/{{ inventory_hostname }}/
+#     dest: /etc/nginx/streams/
+#   notify:
+#     - configtest nginx
+#     - reload nginx
+#   tags:
+#     - nginx
+#     - nginx_config
+#     - nginx_streams
+
+#
+# setup ssls
+#
+- name: sync ssl certs
+  copy:
+    src: ssl/
+    dest: /etc/nginx/ssl/
+  notify:
+    - configtest nginx
+    - reload nginx
+  tags:
+    - ssl
+    - drrrchat
+
+# Please note you can't you ssl and le at the same time!
+- name: sync letsencrypt script
+  copy:
+    src: letsencrypt/letsencrypt.sh
+    dest: /etc/nginx/letsencrypt/
+    mode: 755
+  tags:
+    - letsencrypt
+    - letsencrypt_script_only
+
+- name: sync letsencrypt config
+  copy:
+    src: letsencrypt/{{ item }}.conf
+    dest: /etc/nginx/letsencrypt/
+  with_items: "{{ ssl_sites[inventory_hostname] }}"
+  tags:
+    - letsencrypt
+    - letsencrypt_script_only
+
+- name: run letsencrypt script
+  shell: /etc/nginx/letsencrypt/letsencrypt.sh /etc/nginx/letsencrypt/{{ item }}.conf
+  with_items: "{{ ssl_sites[inventory_hostname] }}"
+  notify:
+    - configtest nginx
+    - reload nginx
+  tags:
+    - letsencrypt
+
+- name: create letsencrypt cron
+  cron:
+    name: update letsencrypt cert for {{ item }}
+    minute: 0
+    hour: 0
+    day: 1
+    job: "/etc/nginx/letsencrypt/letsencrypt.sh /etc/nginx/letsencrypt/{{ item }}.conf >> /var/log/letsencrypt-{{ item }}.log 2>&1"
+  with_items: "{{ ssl_sites[inventory_hostname] }}"
+  tags:
+    - letsencrypt
+    - cron
+
+- name: sync ct-submit script
+  copy:
+    src: letsencrypt/letsencrypt-ct-submit.sh
+    dest: /etc/nginx/letsencrypt/
+    mode: 755
+  tags:
+    - letsencrypt
+    - letsencrypt_script_only
+    - ct_submit
+
+- name: run ct-submit script
+  shell: /etc/nginxletsencrypt/letsencrypt-ct-submit.sh /etc/nginx/letsencrypt/{{ item }}.conf
+  with_items: "{{ ssl_sites[inventory_hostname] }}"
+  notify:
+    - configtest nginx
+    - reload nginx
+  tags:
+    - letsencrypt
+    - ct_submit
