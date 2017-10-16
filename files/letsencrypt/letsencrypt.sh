@@ -75,35 +75,3 @@ cat "$DOMAIN_CRT" lets-encrypt-x3-cross-signed.pem > "$DOMAIN_CHAINED_CRT"
 
 
 echo -e "\e[01;32mNew cert: $DOMAIN_CHAINED_CRT has been generated\e[0m"
-
-# Copied from le-ct-submit.sh
-# Why copied? this should be run every time when a new certificate issued, so
-# we also need to generate new CT for the new certs, the eaiset way to do this
-# is to run ct-submit right after acme-tiny.
-#
-# Note: when acme-tiny fails to generate certs (rate limit for example), the
-# following code won't run, you can run it mannally via Ansible:
-#
-# $ ansible-playbook prepare.yml --limit hostname --tags "ct_submit"
-#
-# Generate CT
-# Generate CT
-CT_SUBMIT_DIR="/tmp/ct-submit"
-if [ -d "$CT_SUBMIT_DIR" ]; then
-  echo "Old ct-submit detected, removing..."
-  rm -rf $CT_SUBMIT_DIR
-fi
-
-cd /tmp/
-git clone https://github.com/grahamedgecombe/ct-submit.git
-cd ct-submit
-go build
-
-CT_CWD="$DIRNAME/sct/$KEY_PREFIX"
-echo "Submitting Certificates Transparency..."
-mkdir -p "$CT_CWD"
-$CT_SUBMIT_DIR/ct-submit ct.googleapis.com/aviator   <$DIRNAME/$DOMAIN_CHAINED_CRT >$CT_CWD/aviator.sct
-$CT_SUBMIT_DIR/ct-submit ct.googleapis.com/pilot     <$DIRNAME/$DOMAIN_CHAINED_CRT >$CT_CWD/pilot.sct
-echo -e "\e[01;32mDone: $DOMAIN_CHAINED_CRT CTs have been submitted\e[0m"
-
-#service nginx reload
