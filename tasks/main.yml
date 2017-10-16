@@ -159,6 +159,7 @@
     dest: /etc/nginx/sites/
   when: site_config.stat.exists
   notify:
+    - update permissions
     - configtest nginx
     - reload nginx
   tags:
