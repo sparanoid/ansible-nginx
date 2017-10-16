@@ -20,6 +20,7 @@
 - name: install nginx repo
   yum_repository:
     name: nginx
+    description: nginx repo
     baseurl: http://nginx.org/packages/mainline/centos/{{ ansible_distribution_major_version }}/$basearch/
     gpgcheck: no
   tags:
@@ -139,10 +140,24 @@
     - nginx
     - nginx_config
 
+- name: check if site config exists
+  local_action: stat path={{ inventory_dir }}/files/nginx-sites/{{ inventory_hostname }}/
+  register: site_config
+  tags: debug
+
+- name: site config warning
+  debug:
+    msg: |
+      Nginx site configs do not exists! please create your own configs in
+        {{ inventory_dir }}/files/nginx-sites/{{ inventory_hostname }}/*.conf
+  when: not site_config.stat.exists
+  tags: debug
+
 - name: sync nginx site configs
   copy:
     src: nginx-sites/{{ inventory_hostname }}/
     dest: /etc/nginx/sites/
+  when: site_config.stat.exists
   notify:
     - configtest nginx
     - reload nginx
@@ -192,14 +207,14 @@
   copy:
     src: letsencrypt/{{ item }}.conf
     dest: /etc/nginx/letsencrypt/
-  with_items: "{{ ssl_sites[inventory_hostname] }}"
+  with_items: "{{ ssl_sites[inventory_hostname] | default([]) }}"
   tags:
     - letsencrypt
     - letsencrypt_script_only
 
 - name: run letsencrypt script
   shell: /etc/nginx/letsencrypt/letsencrypt.sh /etc/nginx/letsencrypt/{{ item }}.conf
-  with_items: "{{ ssl_sites[inventory_hostname] }}"
+  with_items: "{{ ssl_sites[inventory_hostname] | default([]) }}"
   notify:
     - configtest nginx
     - reload nginx
@@ -213,7 +228,7 @@
     hour: 0
     day: 1
     job: "/etc/nginx/letsencrypt/letsencrypt.sh /etc/nginx/letsencrypt/{{ item }}.conf >> /var/log/letsencrypt-{{ item }}.log 2>&1"
-  with_items: "{{ ssl_sites[inventory_hostname] }}"
+  with_items: "{{ ssl_sites[inventory_hostname] | default([]) }}"
   tags:
     - letsencrypt
     - cron
