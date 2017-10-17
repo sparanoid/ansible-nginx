@@ -140,10 +140,25 @@
     - nginx
     - nginx_config
 
+- name: sync nginx configs (playbook user override)
+  copy:
+    src: "{{ inventory_dir }}/files/nginx/"
+    dest: /etc/nginx/
+  notify:
+    - configtest nginx
+    - reload nginx
+  tags:
+    - nginx
+    - nginx_config
+
 - name: check if site config exists
   local_action: stat path={{ inventory_dir }}/files/nginx-sites/{{ inventory_hostname }}/
   register: site_config
-  tags: debug
+  tags:
+    - nginx
+    - nginx_config
+    - nginx_sites
+    - debug
 
 - name: site config warning
   debug:
@@ -151,7 +166,11 @@
       Nginx site configs do not exists! please create your own configs in
         {{ inventory_dir }}/files/nginx-sites/{{ inventory_hostname }}/*.conf
   when: not site_config.stat.exists
-  tags: debug
+  tags:
+    - nginx
+    - nginx_config
+    - nginx_sites
+    - debug
 
 - name: sync nginx site configs
   copy:
