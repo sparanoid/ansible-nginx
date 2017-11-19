@@ -51,11 +51,13 @@
   tags:
     - nginx
 
-# - name: disable SELinux (nginx permission fix)
-#   selinux: state=disabled
-#   tags:
-#     - nginx
-#   when: ansible_distribution == 'CentOS' and ansible_distribution_version >= '7'
+- name: disable SELinux (nginx permission fix)
+  selinux: state=disabled
+  ignore_errors: yes
+  tags:
+    - nginx
+    - selinux
+  when: ansible_distribution == 'CentOS' and ansible_distribution_version >= '7'
 
 # - name: create strong DH group for nginx
 #   command: openssl dhparam -out /etc/nginx/ssl/dhparams.pem 2048 creates=/etc/nginx/ssl/dhparams.pem
@@ -202,16 +204,41 @@
 #
 # setup ssls
 #
-- name: sync ssl certs
+- name: check if site ssl exists
+  local_action: stat path={{ inventory_dir }}/files/ssl/{{ inventory_hostname }}/
+  register: site_ssl
+  tags:
+    - ssl
+
+- name: site ssl warning
+  debug:
+    msg: |
+      Nginx site configs do not exists! please create your own configs in
+        {{ inventory_dir }}/files/ssl/{{ inventory_hostname }}/*.{crt,key}
+  when: not site_ssl.stat.exists
+  tags:
+    - ssl
+
+- name: sync nginx site ssl
   copy:
-    src: ssl/
+    src: ssl/{{ inventory_hostname }}/
+    dest: /etc/nginx/ssl/
+  when: site_ssl.stat.exists
+  notify:
+    - configtest nginx
+    - reload nginx
+  tags:
+    - ssl
+
+- name: sync ssl ca roots
+  copy:
+    src: ssl-base/
     dest: /etc/nginx/ssl/
   notify:
     - configtest nginx
     - reload nginx
   tags:
     - ssl
-    - drrrchat
 
 # Please note you can't you ssl and le at the same time!
 - name: sync letsencrypt script
