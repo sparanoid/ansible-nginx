@@ -204,6 +204,40 @@
 #
 # setup ssls
 #
+# TODO: use native method when it's stable
+# DATE: Jan 10, 2018, 9:34 PM
+# - name: install pyopenssl (self-signed cert requirements)
+#   pip:
+#     name: pyopenssl
+#     state: latest
+#   tags:
+#     - ssl
+#     - sslss
+#
+# - name: generate a self-signed cert
+#   openssl_certificate:
+#     path: /etc/nginx/ssl/localhost.crt
+#     privatekey_path: /etc/nginx/ssl/localhost.key
+#     csr_path: /etc/nginx/ssl/localhost.csr
+#     provider: selfsigned
+#   tags:
+#     - ssl
+#     - sslss
+
+- name: check self-signed cert expiration
+  command: openssl x509 -checkend 2592000 -noout -in /etc/nginx/ssl/localhost.crt
+  register: self_cert_check
+  changed_when: self_cert_check.rc != 0
+  failed_when: self_cert_check.stdout_lines|length > 0
+  tags:
+    - ssl
+
+- name: generate a self-signed cert
+  command: openssl req -x509 -nodes -days 365 -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -subj "/C=US/ST=Delaware/L=Newark/O=Sparanoid, Inc./OU=DevOps/CN=localhost" -keyout /etc/nginx/ssl/localhost.key -out /etc/nginx/ssl/localhost.crt
+  when: self_cert_check.rc != 0
+  tags:
+    - ssl
+
 - name: check if site ssl exists
   local_action: stat path={{ inventory_dir }}/files/ssl/{{ inventory_hostname }}/
   register: site_ssl
