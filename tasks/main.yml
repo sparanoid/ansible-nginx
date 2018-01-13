@@ -224,6 +224,13 @@
 #     - ssl
 #     - sslss
 
+- name: create ssl directory
+  file:
+    path: /etc/nginx/ssl/
+    state: directory
+  tags:
+    - ssl
+
 - name: check self-signed cert expiration
   command: openssl x509 -checkend 2592000 -noout -in /etc/nginx/ssl/localhost.crt
   register: self_cert_check
