@@ -293,9 +293,19 @@
     - letsencrypt
     - letsencrypt_script_only
 
-- name: run letsencrypt script
-  shell: /etc/nginx/letsencrypt/letsencrypt.sh /etc/nginx/letsencrypt/{{ item }}.conf
+# https://stackoverflow.com/a/29564339/412385
+- name: check letsencrypt cert expiration
+  command: openssl x509 -checkend 2592000 -noout -in /etc/nginx/letsencrypt/{{ item }}.crt
+  register: letsencrypt_cert_checks
+  failed_when: letsencrypt_cert_checks.stdout_lines|length > 0
   with_items: "{{ ssl_sites[inventory_hostname] | default([]) }}"
+  tags:
+    - letsencrypt
+
+- name: run letsencrypt script
+  shell: /etc/nginx/letsencrypt/letsencrypt.sh /etc/nginx/letsencrypt/{{ item.item }}.conf
+  when: item.rc != 0
+  with_items: "{{ letsencrypt_cert_checks.results }}"
   notify:
     - configtest nginx
     - reload nginx
