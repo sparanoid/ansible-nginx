@@ -51,14 +51,6 @@
   tags:
     - nginx
 
-- name: disable SELinux (nginx permission fix)
-  selinux: state=disabled
-  ignore_errors: yes
-  tags:
-    - nginx
-    - selinux
-  when: ansible_distribution == 'CentOS' and ansible_distribution_version >= '7'
-
 # - name: create strong DH group for nginx
 #   command: openssl dhparam -out /etc/nginx/ssl/dhparams.pem 2048 creates=/etc/nginx/ssl/dhparams.pem
 #   notify:
