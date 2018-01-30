@@ -180,6 +180,41 @@
     - nginx_config
     - nginx_sites
 
+- name: check if upstream config exists
+  local_action: stat path={{ inventory_dir }}/files/nginx-upstreams/{{ inventory_hostname }}/
+  register: upstream_config
+  tags:
+    - nginx
+    - nginx_config
+    - nginx_upstreams
+    - debug
+
+- name: upstream config warning
+  debug:
+    msg: |
+      Nginx upstream configs do not exists! please create your own configs in
+        {{ inventory_dir }}/files/nginx-upstreams/{{ inventory_hostname }}/*.conf
+  when: not upstream_config.stat.exists
+  tags:
+    - nginx
+    - nginx_config
+    - nginx_upstreams
+    - debug
+
+- name: sync nginx upstream configs
+  copy:
+    src: nginx-upstreams/{{ inventory_hostname }}/
+    dest: /etc/nginx/upstreams/
+  when: upstream_config.stat.exists
+  notify:
+    - update permissions
+    - configtest nginx
+    - reload nginx
+  tags:
+    - nginx
+    - nginx_config
+    - nginx_upstreams
+
 # TODO: I never use Nginx stream mode (TCP load balancing), so disable for now
 # - name: sync nginx stream configs
 #   copy:
