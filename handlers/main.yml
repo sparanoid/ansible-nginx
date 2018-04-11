@@ -7,7 +7,7 @@
   service:
     name: nginx
     state: reloaded
-  when: nginx_configtest_result|success
+  when: nginx_configtest_result is succeeded
 
 - name: update permissions
   file:
