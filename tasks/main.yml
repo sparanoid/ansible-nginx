@@ -78,12 +78,14 @@
     - nginx
     - logrotate
 
-- name: create nginx cache directory
+# This can now be removed since I use `/dev/shm` for better performance.
+- name: create nginx cache (proxy_cache_path) directory
   file:
-    path: /var/lib/nginx/cache/
+    path: /var/cache/nginx/proxy_cache/
     state: directory
   tags:
     - nginx
+    - nginx_config
 
 - name: create nginx deny-hosts for fail2ban
   copy:
