@@ -124,6 +124,7 @@
   tags:
     - nginx
     - nginx_sites
+    - nginx_config
 
 - name: sync nginx configs
   copy:
