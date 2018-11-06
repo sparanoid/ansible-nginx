@@ -127,7 +127,7 @@
     - nginx_config
 
 - name: sync nginx configs
-  copy:
+  synchronize:
     src: nginx/
     dest: /etc/nginx/
   notify:
@@ -138,7 +138,7 @@
     - nginx_config
 
 - name: sync nginx configs (playbook user override)
-  copy:
+  synchronize:
     src: "{{ inventory_dir }}/files/nginx/"
     dest: /etc/nginx/
   notify:
@@ -170,7 +170,7 @@
     - debug
 
 - name: sync nginx site configs
-  copy:
+  synchronize:
     src: nginx-sites/{{ inventory_hostname }}/
     dest: /etc/nginx/sites/
   when: site_config.stat.exists
@@ -205,7 +205,7 @@
     - debug
 
 - name: sync nginx upstream configs
-  copy:
+  synchronize:
     src: nginx-upstreams/{{ inventory_hostname }}/
     dest: /etc/nginx/upstreams/
   when: upstream_config.stat.exists
@@ -220,7 +220,7 @@
 
 # TODO: I never use Nginx stream mode (TCP load balancing), so disable for now
 # - name: sync nginx stream configs
-#   copy:
+#   synchronize:
 #     src: nginx-streams/{{ inventory_hostname }}/
 #     dest: /etc/nginx/streams/
 #   notify:
@@ -291,7 +291,7 @@
     - ssl
 
 - name: sync nginx site ssl
-  copy:
+  synchronize:
     src: ssl/{{ inventory_hostname }}/
     dest: /etc/nginx/ssl/
   when: site_ssl.stat.exists
@@ -302,7 +302,7 @@
     - ssl
 
 - name: sync ssl ca roots
-  copy:
+  synchronize:
     src: ssl-base/
     dest: /etc/nginx/ssl/
   notify:
@@ -313,7 +313,7 @@
 
 # Please note you can't you ssl and le at the same time!
 - name: sync letsencrypt script
-  copy:
+  synchronize:
     src: letsencrypt/letsencrypt.sh
     dest: /etc/nginx/letsencrypt/
     mode: 755
@@ -322,7 +322,7 @@
     - letsencrypt_script_only
 
 - name: sync letsencrypt config
-  copy:
+  synchronize:
     src: letsencrypt/{{ item }}.conf
     dest: /etc/nginx/letsencrypt/
   with_items: "{{ ssl_sites[inventory_hostname] | default([]) }}"
