@@ -313,7 +313,7 @@
 
 # Please note you can't you ssl and le at the same time!
 - name: sync letsencrypt script
-  synchronize:
+  copy:
     src: letsencrypt/letsencrypt.sh
     dest: /etc/nginx/letsencrypt/
     mode: 755
@@ -322,7 +322,7 @@
     - letsencrypt_script_only
 
 - name: sync letsencrypt config
-  synchronize:
+  copy:
     src: letsencrypt/{{ item }}.conf
     dest: /etc/nginx/letsencrypt/
   with_items: "{{ ssl_sites[inventory_hostname] | default([]) }}"
