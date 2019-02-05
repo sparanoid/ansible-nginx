@@ -136,6 +136,7 @@
   tags:
     - nginx
     - nginx_config
+    - nginx_config_only
 
 - name: sync nginx configs (playbook user override)
   synchronize:
@@ -147,6 +148,7 @@
   tags:
     - nginx
     - nginx_config
+    - nginx_config_only
 
 - name: check if site config exists
   local_action: stat path={{ inventory_dir }}/files/nginx-sites/{{ inventory_hostname }}/
@@ -155,6 +157,7 @@
     - nginx
     - nginx_config
     - nginx_sites
+    - nginx_sites_only
     - debug
 
 - name: site config warning
@@ -167,6 +170,7 @@
     - nginx
     - nginx_config
     - nginx_sites
+    - nginx_sites_only
     - debug
 
 - name: sync nginx site configs
@@ -182,6 +186,7 @@
     - nginx
     - nginx_config
     - nginx_sites
+    - nginx_sites_only
 
 - name: check if upstream config exists
   local_action: stat path={{ inventory_dir }}/files/nginx-upstreams/{{ inventory_hostname }}/
