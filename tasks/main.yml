@@ -88,20 +88,14 @@
     - nginx_config
 
 - name: create nginx deny-hosts for fail2ban
-  copy:
-    content: ""
-    dest: /etc/nginx/conf.d/deny-hosts
-    force: no
+  file:
+    path: /etc/nginx/conf.d/deny-hosts
+    state: touch
+    modification_time: preserve
+    access_time: preserve
     owner: nginx
     group: nginx
-  # TODO: Need better solution:
-  # LINK: https://github.com/ansible/ansible/issues/7490
-  # file:
-  #   path: /etc/nginx/conf.d/deny-hosts
-  #   state: touch
-  #   owner: nginx
-  #   group: nginx
-  # changed_when: false
+  changed_when: false
   tags:
     - nginx
     - fail2ban
