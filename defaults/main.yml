@@ -1,4 +1,8 @@
 ---
 http_user: nginx
+nginx_modules:
+  - nginx-module-geoip
+  - nginx-module-image-filter
+  - nginx-module-njs
 nginx_sites: []
 ssl_sites: [] # Used by Let's Encrypt, normal CA issued are not speicified here
