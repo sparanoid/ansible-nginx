@@ -33,6 +33,13 @@
   tags:
     - repo
 
+- name: install nginx modules
+  yum:
+    name: "{{ nginx_modules }}"
+    state: present
+  tags:
+    - repo
+
 - name: ensure httpd is stopped and disabled
   service:
     name: httpd
